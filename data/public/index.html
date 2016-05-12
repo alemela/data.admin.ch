@@ -11,6 +11,19 @@
   <link href="graph_files/98da0a4.css" media="screen, print" type="text/css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.min.css" type="text/css" />
   <link rel="stylesheet" href="css/main.css" type="text/css" />
+
+  <script id="data" type="text/turtle">
+    @prefix schema: <http://schema.org/> .
+    <http://localhost:8080/index.html> a schema:WebPage .
+  </script>
+
+  <link rel="matchers" href="http://cdn.rawgit.com/rdf2h/rdf2h.github.io/v0.0.1/2015/rdf2h-points.ttl" type="text/turtle"/>
+  <link rel="matchers" href="rdf2h/site-matchers.ttl" type="text/turtle" />
+  <script src="http://cdn.rawgit.com/rdf2h/rdf2h/v0.3.0/dist/rdf-ext.js"></script>
+  <script src="http://cdn.rawgit.com/rdf2h/rdf2h/v0.3.0/dist/rdf2h.js"></script>
+  <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+  <script src="http://cdn.rawgit.com/rdf2h/ld2h/v0.2.0/dist/ld2h.js"></script>
+  <script src="http://cdn.rawgit.com/retog/rdf-store-ldp-browser/v0.3.0-rc2f/dist/rdf-store-ldp.js"></script>
 </head>
 
 <body>
@@ -116,5 +129,19 @@
     <p>Do you have questions about the Linked Data pilot portal? Contact us via our
     <a title="github" href="https://github.com/zazuko/fso-lod">Github page</a>.</p>
   </footer>
+
+  <script type="text/javascript">
+    $(function () {
+      var store = new LdpStore({
+          parsers: new LdpStore.ParserUtil({
+              'text/turtle': LdpStore.parsers.findParsers("text/turtle")[0]
+          })
+      });
+
+      LD2h.store = store;
+      LD2h.expand();
+    });
+  </script>
+  <div class="render" resource="">Rendering results come here.</div>
 </body>
 </html>
