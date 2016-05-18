@@ -2,17 +2,54 @@
 
 'use strict';
 
+
+global.rdf = require('rdf-ext')(rdf);
+
+
 var
   fs = require('fs'),
-  path = require('path');
+  graphSplit = require('./lib/graph-split')(rdf),
+  url = require('url');
 
 
-var buildQuery = function (iri) {
-  return 'DESCRIBE <' + iri + '>';
-};
+var init = function () {
+  var config = this;
 
-var buildExistsQuery = function (iri) {
-  return 'ASK { GRAPH <http://lindas-data.ch/resource/histgemeinde> { <' + iri + '> ?p ?o }}';
+  var importGraph = function (filename) {
+    return new Promise(function (resolve) {
+      rdf.parseTurtle(fs.readFileSync(filename).toString(), function (graph) {
+        resolve(graph);
+      });
+    });
+  };
+
+  return Promise.all([
+    importGraph('./data/public/files/root.ttl')
+  ]).then(function (graphs) {
+    var
+      mergedGraph = rdf.createGraph(),
+      searchNs = 'http://localhost:8080',
+      replaceNs = url.format({
+        protocol: 'http:',
+        hostname: config.hostname,
+        port: config.port || '',
+        pathname: config.path || ''
+      });
+
+    graphs.forEach(function (graph) {
+      // map namespace to listener config
+      graph = rdf.utils.mapNamespaceGraph(graph, searchNs, replaceNs);
+
+      mergedGraph.addAll(graph);
+    });
+
+    config.handlerOptions.storeOptions = {
+      graph: mergedGraph,
+      split: rdf.utils.splitGraphByNamedNodeSubject
+    };
+
+    return Promise.resolve();
+  });
 };
 
 var patchResponseHeaders = function (res, headers) {
@@ -55,8 +92,14 @@ module.exports = {
   logger: {
     level: 'debug'
   },
+  // public interface visible after any reverse proxies
+  hostname: 'localhost',
+  port: 8080,
+  path: '',
+  // listener
   listener: {
-    port: 80
+    hostname: '',
+    port: 8080
   },
   expressSettings: {
     'trust proxy': 'loopback',
@@ -65,31 +108,10 @@ module.exports = {
   patchHeaders: {
     patchResponse: patchResponseHeaders
   },
-  sparqlProxy: {
-    path: '/query',
-    options: {
-      endpointUrl:'http://lindas-data.ch/sparql',
-      queryOperation: 'urlencoded'
-    }
-  },
-  sparqlSearch: {
-    path: '/whatever',
-    options: {
-      endpointUrl:'http://lindas-data.ch/sparql',
-      resultsPerPage: 5,
-      queryTemplate: fs.readFileSync(path.join(__dirname, 'data/sparql/search.sparql')).toString(),
-      variables: {
-        'q': {
-          variable: '%searchstring%',
-          required: true
-        }
-      }
-    }
-  },
-  HandlerClass: require('./lib/sparql-handler'),
+  init: init,
+  HandlerClass: require('./lib/ldp-module-handler'),
   handlerOptions: {
-    endpointUrl: 'http://lindas-data.ch/sparql',
-    buildQuery: buildQuery,
-    buildExistsQuery: buildExistsQuery
+    rdf: rdf,
+    StoreClass: graphSplit.SplitStore
   }
 };
